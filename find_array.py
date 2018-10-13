@@ -2,6 +2,12 @@ import math
 import gdal
 import struct
 import numpy
+from pyproj import Proj
+
+def convert_sin_2_wgs84(x, y):
+    p_modis_grid = Proj('+proj=sinu +R=6371007.181 +nadgrids=@null +wktext')
+    lon, lat = p_modis_grid(x, y, inverse=True)
+    return lon, lat
 
 def find_my_pixel(given_latlong, latlong_table, band):
     #current_min = (sum_diff, x, y)
@@ -14,10 +20,59 @@ def find_my_pixel(given_latlong, latlong_table, band):
     return current_min
 
 def find_nearest_snow(latlong_table, location):
-    if(latlong_table(location[0], location[1]) > 0 and latlong_table(location[0], location[1]) <= 100):
+    if(latlong_table[location[0]][ location[1]][2] > 0 and latlong_table[location[0]][ location[1]][2] <= 100):
        return location
+    depth = 1
+    runner = (0,0)
+    while (1):
+        flag = 0
+        runner = (location[0]-depth , location[1]+depth)
+        for i in range(depth*2+1):
+            if (runner[0] + i < 0 or runner[0] + i > band.XSize or runner[1] > band.YSize or runner[1] < 0):
+                continue
+            else:
+                flag = 1
+            if (latlong_table[runner[0] + i][ runner[1]][2]>0 and latlong_table[runner[0] + i][ runner[1]][2]<=100):
+                print "snow found"
+                return latlong_table[runner[0]+i][runner[1]]
+#        runner[0] += i
+        runner = (runner[0] + i, runner[1])
+        for i in range(depth * 2 + 1):
+            if (runner[0]  < 0 or runner[0] > band.XSize or runner[1] - i > band.YSize or runner[1] - i < 0):
+                continue
+            else:
+                flag = 1
+            if (latlong_table[runner[0]][ runner[1] - i][2]>0 and latlong_table[runner[0]][ runner[1] - i][2] <= 100):
+                print "snow found"
+                return latlong_table[runner[0]][runner[1]-i]
+#        runner[1] -= i
+        runner = (runner[0], runner[1] - i)
+        for i in range(depth * 2 + 1):
+            if (runner[0] - i < 0 or runner[0] - i > band.XSize or runner[1] > band.YSize or runner[1] < 0):
+                continue
+            else:
+                flag = 1
+            if (latlong_table[runner[0] - i][ runner[1]][2]>0 and latlong_table[runner[0] - i][ runner[1]][2] <= 100):
+                print "snow found"
+                return latlong_table[runner[0]-i][runner[1]]
+#            runner[0] -= i
+            runner = (runner[0] - i, runner[1])
+        for i in range(depth * 2 + 1) :
+            if (runner[0] < 0 or runner[0] > band.XSize or runner[1] + i > band.YSize or runner[1] + i < 0):
+                continue
+            else:
+                flag = 1
+            if (latlong_table[runner[0]][ runner[1] + i][2]>0 and latlong_table[runner[0]][ runner[1] + i][2] <= 100):
+                print "snow found"
+                return latlong_table[runner[0]][runner[1]+i]
+        if(flag == 0):
+            print "nosno"
+            break
+        depth += 1
     
-nameraster = "/home/anon/Downloads/MOD10A1.A2018284.h18v05.006.2018286033502.hdf"
+
+        
+nameraster = "/home/anon/Downloads/sweden.hdf"
 tile_name = nameraster
 hdl_file = gdal.Open(tile_name)
 subDatasets = hdl_file.GetSubDatasets()
@@ -46,5 +101,11 @@ for y in range(band.YSize):
         x += 1
     X = geotransform[0]
     Y += geotransform[5] #y pixel size
-my_pixel = find_my_pixel((1024387.4162, 4398692.9307), latlong_table, band)
+my_pixel = find_my_pixel((698215.2638, 7743812.7440), latlong_table, band)
 print my_pixel
+ma_location = (my_pixel[1], my_pixel[2])
+ma_snow = find_nearest_snow(latlong_table, ma_location)
+print ma_snow
+lon, lat = convert_sin_2_wgs84(ma_snow[0], ma_snow[1])
+print lon
+print lat
