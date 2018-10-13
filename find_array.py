@@ -1,6 +1,22 @@
+import math
 import gdal
 import struct
+import numpy
 
+def find_my_pixel(given_latlong, latlong_table, band):
+    #current_min = (sum_diff, x, y)
+    current_min = (1111111111, 0, 0)
+    for i in range(band.XSize):
+        for j in range(band.YSize):
+            sum_diff = math.sqrt((given_latlong[0] - latlong_table[i][j][0]) ** 2 + (given_latlong[1] - latlong_table[i][j][1]) ** 2)
+            if sum_diff < current_min[0]:
+                current_min = (sum_diff, i, j)
+    return current_min
+
+def find_nearest_snow(latlong_table, location):
+    if(latlong_table(location[0], location[1]) > 0 and latlong_table(location[0], location[1]) <= 100):
+       return location
+    
 nameraster = "/home/anon/Downloads/MOD10A1.A2018284.h18v05.006.2018286033502.hdf"
 tile_name = nameraster
 hdl_file = gdal.Open(tile_name)
@@ -30,3 +46,5 @@ for y in range(band.YSize):
         x += 1
     X = geotransform[0]
     Y += geotransform[5] #y pixel size
+my_pixel = find_my_pixel((1024387.4162, 4398692.9307), latlong_table, band)
+print my_pixel
