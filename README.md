@@ -72,6 +72,9 @@ This project is licensed under the GPL V3 License - see the [LICENSE.md](LICENSE
 
 * Hat tip to anyone whose code was used
 * The Nasa Space Apps:Thessaloniki Volunteers and Organisers 
-* etc
-
+* GREEK NEWSPACE SOCIETY
+* Vasilapostolos Ouranis
+* Giwrgos Profitiliwtis
+* Giwrgos Ntalis
+* Elena Veli
 
