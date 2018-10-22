@@ -100,7 +100,7 @@ def run_and_check_pixels(latlong_table, query):
                         if(double_flag == 0):
                             object_list.append(response['results'][0]['poi']['name'])
                             print(response['results'][0]['poi']['name'])
-nameraster = "/home/anon/Downloads/seattle.hdf"
+nameraster = "./fixtures/seattle.hdf"
 tile_name = nameraster
 print "1. Find nearest snow\n2. Find all POIs in slice with snow(We used hospital in demo)"
 func_option = raw_input("Please enter your preferance: ")
