@@ -53,7 +53,6 @@ To run the software just type:
 python core.py
 ```
 
-```
 
 ## Contributing
 
