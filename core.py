@@ -2,10 +2,17 @@ import math
 import gdal
 import struct
 import numpy
+import requests
+from geopy.geocoders import Nominatim
 from pyproj import Proj
 
-def convert_sin_2_wgs84(x, y):
+def convert_wgs84_2_sin(lon, lat):
     p_modis_grid = Proj('+proj=sinu +R=6371007.181 +nadgrids=@null +wktext')
+    x, y = p_modis_grid(lon, lat)
+    return x, y
+
+def convert_sin_2_wgs84(x, y):
+    p_modis_grid = Proj('+proj=sinu +R=6371007.181 +nadgrids=@null +wktext +init=epsg:3857')
     lon, lat = p_modis_grid(x, y, inverse=True)
     return lon, lat
 
@@ -69,11 +76,34 @@ def find_nearest_snow(latlong_table, location):
             print "nosno"
             break
         depth += 1
-    
-
-        
-nameraster = "/home/anon/Downloads/sweden.hdf"
+def run_and_check_pixels(latlong_table, query):
+    object_list = []
+    runner = (0, 0)
+    radius = raw_input("Enter Radius Parameter (Radius in Meters): ")
+    MIN = raw_input("Enter Snow Tolerance (1 to 99): ")
+    MIN = int(MIN)
+    for i in range(2400):
+        for j in range(2400):
+            if(MIN <= latlong_table[i][j][2] <= 99):
+                #print convert_sin_2_wgs84(latlong_table[i][j][0], latlong_table[i][j][1])
+                coordinates = convert_sin_2_wgs84(latlong_table[i][j][0], latlong_table[i][j][1])
+                r = requests.get("https://api.tomtom.com/search/2/poiSearch/"+ query +".json?key=sMiwluxXC46HdG5EWpNYaPtfZnl8AdS8&lat=" + str(coordinates[1]) +"&lon=" + str(coordinates[0]) + "&radius=" + radius)
+                response = r.json()
+                if(len(response['results']) > 0):
+                    if(len(object_list) == 0):
+                        object_list.append(response['results'][0]['poi']['name'])
+                    else:
+                        double_flag = 0
+                        for i in range(len(object_list)):
+                            if(object_list[i] == response['results'][0]['poi']['name']):
+                                double_flag = 1
+                        if(double_flag == 0):
+                            object_list.append(response['results'][0]['poi']['name'])
+                            print(response['results'][0]['poi']['name'])
+nameraster = "/home/anon/Downloads/seattle.hdf"
 tile_name = nameraster
+print "1. Find nearest snow\n2. Find all POIs in slice with snow(We used hospital in demo)"
+func_option = raw_input("Please enter your preferance: ")
 hdl_file = gdal.Open(tile_name)
 subDatasets = hdl_file.GetSubDatasets()
 dataset = gdal.Open(subDatasets[0][0])
@@ -101,11 +131,25 @@ for y in range(band.YSize):
         x += 1
     X = geotransform[0]
     Y += geotransform[5] #y pixel size
-my_pixel = find_my_pixel((698215.2638, 7743812.7440), latlong_table, band)
-print my_pixel
-ma_location = (my_pixel[1], my_pixel[2])
-ma_snow = find_nearest_snow(latlong_table, ma_location)
-print ma_snow
-lon, lat = convert_sin_2_wgs84(ma_snow[0], ma_snow[1])
-print lon
-print lat
+if func_option == "1":
+    location_name = raw_input("Please enter your location. \n")
+    geolocator = Nominatim(user_agent="arcGIS")
+    location = geolocator.geocode(location_name)
+    latitude = location.latitude
+    print latitude
+    longitude = location.longitude
+    print longitude
+    seattle = convert_wgs84_2_sin(longitude, latitude)
+    my_pixel = find_my_pixel(seattle, latlong_table, band)
+    #print 'This is the weird part' + str(tuple(my_pixel))
+    ma_location = (my_pixel[1], my_pixel[2])
+    ma_snow = find_nearest_snow(latlong_table, ma_location)
+    print ma_snow
+    lon, lat = convert_sin_2_wgs84(ma_snow[0], ma_snow[1])
+    print lon
+    print lat
+elif func_option == "2":
+    poi = raw_input("Enter poi: ")
+    run_and_check_pixels(latlong_table, poi)
+else:
+    print "Exiting. . . \n"
